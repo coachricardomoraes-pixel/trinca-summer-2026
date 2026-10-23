@@ -106,6 +106,24 @@ tr.marco td{background:var(--neon)}
 .marca{font-size:12px;color:var(--muted);display:block}
 .vazio{padding:20px 2px;color:var(--muted);font-size:15px}
 
+/* calculadora de troca */
+.calc{border:2px solid var(--ink);margin:20px 0 8px}
+.calc-topo{background:var(--ink);color:var(--paper);padding:12px 16px}
+.calc-topo b{font-family:var(--display);font-weight:700;font-size:20px;display:block;line-height:1.2}
+.calc-topo span{font-size:13.5px;color:#C9C9C2}
+.calc-corpo{padding:16px 16px 18px;display:grid;gap:14px}
+.calc label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:5px}
+.calc select,.calc input{width:100%;font-family:var(--body);font-size:16px;padding:13px 12px;
+  border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:0;min-height:48px}
+.calc input{-webkit-appearance:none;appearance:none}
+.calc select:focus,.calc input:focus{outline:none;background:#FCFFF0;box-shadow:inset 0 -4px 0 var(--neon)}
+.calc-res{background:var(--sand);border-left:5px solid var(--ink);padding:14px 16px;font-size:15px;color:var(--muted)}
+.calc-res.ok{background:var(--neon);border-left-color:var(--ink);color:var(--ink)}
+.calc-res .peq{font-size:13.5px;margin-top:2px}
+.calc-res .grande{display:block;font-family:var(--display);font-weight:700;font-size:34px;line-height:1.1;margin:2px 0 4px}
+.calc-res .aviso{display:block;margin-top:8px;font-size:13.5px;font-weight:500}
+.ou{font-family:var(--display);font-weight:600;font-size:17px;margin:26px 0 0}
+
 /* dúvidas */
 details{border-bottom:1px solid var(--line)}
 summary{cursor:pointer;padding:14px 26px 14px 0;font-weight:500;font-size:15.5px;position:relative;list-style:none}
@@ -245,7 +263,7 @@ Ninguém audita e não vale ponto. E não acumula: o que você não usar na sema
 <p>2,5 a 3 litros de água por dia. Café e chá, sem açúcar e sem adoçante.</p>
 
 <div class="chamada">
-Com fome? Aumente a salada e os legumes. E marque isso na enquete — a Gabi vai falar com você.
+Com fome? Aumente a salada e os legumes. Se a fome continuar, mantenha a Gabi informada: ela pode ajustar sua base calórica.
 </div>
 </section>
 
@@ -253,11 +271,27 @@ Com fome? Aumente a salada e os legumes. E marque isso na enquete — a Gabi vai
 <h2>Trocar um alimento</h2>
 <p>Use isto só quando nenhuma das três opções do seu cardápio servir. Se servir, use a opção — ela já está calculada.</p>
 
-<div class="busca">
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6C6C66" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-  <input type="search" id="q" placeholder="Digite o alimento. Ex: mandioca" autocomplete="off" aria-label="Buscar alimento para trocar">
+<div class="calc" id="calc">
+  <div class="calc-topo">
+    <b>Calculadora de troca</b>
+    <span>Qualquer quantidade, qualquer alimento do mesmo grupo.</span>
+  </div>
+  <div class="calc-corpo">
+    <div>
+      <label for="c-de">O que está no seu cardápio</label>
+      <select id="c-de"></select>
+    </div>
+    <div>
+      <label for="c-qtd" id="c-qtd-l">Quantidade</label>
+      <input type="number" id="c-qtd" inputmode="decimal" min="0" step="any" placeholder="Ex: 170">
+    </div>
+    <div>
+      <label for="c-para">Quero trocar por</label>
+      <select id="c-para"></select>
+    </div>
+    <div class="calc-res" id="c-res" aria-live="polite"></div>
+  </div>
 </div>
-<div id="resultado"></div>
 
 <div class="nota" style="margin-top:22px">
 Troque dentro do mesmo grupo. Carboidrato por carboidrato, proteína por proteína, fruta por fruta.<br><br>
@@ -474,36 +508,102 @@ var grupos = {
 };
 var ordem = ["carb","fruta","prot","gord"];
 
-function limpa(x){
-  return x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+/* ---------- calculadora de troca ----------
+   Cada alimento tem "e": quanto dele equivale a 1 referência do grupo
+   (100 g de arroz cozido, 1 banana, 100 g de frango, 1 colher de azeite).
+   A conta é: quantidade ÷ e do cardápio × e do alimento novo. */
+var refs = [
+ {g:"carb",  n:"Arroz cozido",    e:100, u:"g"},
+ {g:"fruta", n:"Banana",          e:1,   u:"un"},
+ {g:"prot",  n:"Frango grelhado", e:100, u:"g"},
+ {g:"gord",  n:"Azeite",          e:1,   u:"colher"}
+];
+var porUnidade = {"Ovo inteiro":4, "Clara de ovo":6};
+var itensCalc = refs.concat(trocas.map(function(i){
+  var m = /(\d+)\s*g/.exec(i.p || "");
+  var o = {g:i.g, n:i.n, m:i.m};
+  if(m){ o.e = +m[1]; o.u = "g"; }
+  else { o.e = porUnidade[i.n]; o.u = "un"; }
+  return o;
+}));
+var nomeGrupo = {carb:"Carboidratos", fruta:"Frutas", prot:"Proteínas", gord:"Gorduras"};
+var rotuloUn = {
+  g:["g","g"], un:["unidade","unidades"], colher:["colher de sopa","colheres de sopa"]
+};
+var elDe = document.getElementById("c-de");
+var elPara = document.getElementById("c-para");
+var elQtd = document.getElementById("c-qtd");
+var elQtdL = document.getElementById("c-qtd-l");
+var elRes = document.getElementById("c-res");
+
+function nomeMin(n){ return n.charAt(0).toLowerCase() + n.slice(1); }
+function num(x){ return x.toLocaleString("pt-BR",{maximumFractionDigits:1}); }
+function arredonda(v,u){
+  if(u === "g") return v >= 20 ? Math.round(v/5)*5 : Math.round(v);
+  return Math.max(0.5, Math.round(v*2)/2);
 }
-function desenha(termo){
-  var alvo = document.getElementById("resultado");
-  var t = limpa(termo.trim());
-  var lista = t ? trocas.filter(function(i){
-    return limpa(i.n).indexOf(t) > -1 || (i.alt && limpa(i.alt).indexOf(t) > -1);
-  }) : trocas;
-  if(!lista.length){
-    alvo.innerHTML = '<p class="vazio">Não encontramos esse alimento. Pergunte no grupo — a Gabi responde lá.</p>';
-    return;
-  }
+function texto(v,u){
+  var r = rotuloUn[u];
+  if(u === "g") return num(v) + " g";
+  return num(v) + " " + (v === 1 ? r[0] : r[1]);
+}
+function opcoes(sel, lista, escolhido){
   var html = "";
   ordem.forEach(function(g){
     var itens = lista.filter(function(i){ return i.g === g; });
     if(!itens.length) return;
-    html += '<div class="grupo"><div class="ancora">' + grupos[g] + '</div>';
+    html += '<optgroup label="' + nomeGrupo[g] + '">';
     itens.forEach(function(i){
-      html += '<div class="troca"><span><b>' + i.n + '</b>' +
-              (i.m ? '<span class="marca">' + i.m + '</span>' : '') +
-              '</span><em>' + i.q + (i.p ? ' · ' + i.p : '') + '</em></div>';
+      var idx = itensCalc.indexOf(i);
+      html += '<option value="' + idx + '"' + (i.n === escolhido ? " selected" : "") + '>' + i.n + '</option>';
     });
-    html += '</div>';
+    html += '</optgroup>';
   });
-  alvo.innerHTML = html;
+  sel.innerHTML = html;
 }
-var campo = document.getElementById("q");
-campo.addEventListener("input", function(){ desenha(campo.value); });
-desenha("");
+function montaPara(){
+  var de = itensCalc[+elDe.value];
+  var anterior = elPara.value ? itensCalc[+elPara.value] : null;
+  var mesmo = itensCalc.filter(function(i){ return i.g === de.g && i !== de; });
+  var manter = anterior && anterior.g === de.g && anterior !== de ? anterior.n : null;
+  if(!manter){
+    var pref = {carb:"Arroz cozido", fruta:"Banana", prot:"Frango grelhado", gord:"Azeite"}[de.g];
+    manter = pref !== de.n ? pref : mesmo[0].n;
+  }
+  opcoes(elPara, mesmo, manter);
+}
+function rotuloQtd(){
+  var de = itensCalc[+elDe.value];
+  var nome = {g:"Quantidade (em gramas)", un:"Quantidade (em unidades)", colher:"Quantidade (em colheres de sopa)"}[de.u];
+  elQtdL.textContent = nome;
+  elQtd.placeholder = de.u === "g" ? "Ex: 170" : "Ex: 2";
+  elQtd.step = de.u === "g" ? "any" : "0.5";
+}
+function calcula(){
+  var de = itensCalc[+elDe.value], para = itensCalc[+elPara.value];
+  var q = parseFloat(String(elQtd.value).replace(",","."));
+  if(!(q > 0)){
+    elRes.className = "calc-res";
+    elRes.innerHTML = "Digite a quantidade para ver a troca.";
+    return;
+  }
+  var bruto = q / de.e * para.e;
+  var v = arredonda(bruto, para.u);
+  var aviso = para.m ? '<span class="aviso">Atenção: ' + para.m + '.</span>' : "";
+  elRes.className = "calc-res ok";
+  elRes.innerHTML = 'Coma' +
+    '<span class="grande">' + texto(v, para.u) + '</span>' +
+    'de ' + nomeMin(para.n) +
+    '<div class="peq">no lugar de ' + texto(q, de.u) + ' de ' + nomeMin(de.n) + '. Arredonde, não precisa ser exato.</div>' +
+    aviso;
+}
+opcoes(elDe, itensCalc, "Batata-doce");
+montaPara();
+rotuloQtd();
+calcula();
+elDe.addEventListener("change", function(){ montaPara(); rotuloQtd(); calcula(); });
+elPara.addEventListener("change", calcula);
+elQtd.addEventListener("input", calcula);
 
 var dados = {
   1:{r:"Esta semana", v:"Adaptação", t:"Siga o cardápio, aprenda as porções, monte o prato certo. É a semana em que você aprende o método."},
