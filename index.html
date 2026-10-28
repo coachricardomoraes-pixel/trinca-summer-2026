@@ -106,6 +106,23 @@ tr.marco td{background:var(--neon)}
 .marca{font-size:12px;color:var(--muted);display:block}
 .vazio{padding:20px 2px;color:var(--muted);font-size:15px}
 
+/* calculadora de troca */
+.calc{border:2px solid var(--ink);padding:16px;margin:16px 0 8px;background:var(--paper)}
+.calc h3{margin:0 0 2px}
+.calc .sub{font-size:14px;color:var(--muted);margin:0 0 12px}
+.calc label{display:block;font-family:var(--display);font-weight:700;font-size:15px;margin:12px 0 5px}
+.calc select,.calc input{width:100%;font-family:var(--body);font-size:16px;padding:13px 12px;border:2px solid var(--ink);
+  background:var(--paper);color:var(--ink);border-radius:0;-webkit-appearance:none;appearance:none}
+.calc select{background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat;padding-right:36px}
+.calc select:focus,.calc input:focus{outline:none;background-color:#FCFFF0;box-shadow:inset 0 -4px 0 var(--neon)}
+.calc .res{margin-top:16px;background:var(--sand);border-left:5px solid var(--ink);padding:14px 16px;font-size:15px}
+.calc .res .big{font-family:var(--display);font-weight:700;font-size:26px;line-height:1.15;display:block;margin:2px 0 4px}
+.calc .res .big mark{background:var(--neon);padding:0 6px}
+.calc .res small{display:block;color:var(--muted);font-size:13.5px;margin-top:4px}
+.calc .res .aviso{color:var(--ink);font-weight:500}
+.ou{font-family:var(--display);font-weight:700;font-size:15px;margin:22px 0 0}
+
 /* dúvidas */
 details{border-bottom:1px solid var(--line)}
 summary{cursor:pointer;padding:14px 26px 14px 0;font-weight:500;font-size:15.5px;position:relative;list-style:none}
@@ -253,12 +270,17 @@ Com fome? Aumente a salada e os legumes. E marque isso na enquete — a Gabi vai
 <h2>Trocar um alimento</h2>
 <p>Use isto só quando nenhuma das três opções do seu cardápio servir. Se servir, use a opção — ela já está calculada.</p>
 
-<div class="busca">
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6C6C66" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-  <input type="search" id="q" placeholder="Digite o alimento. Ex: mandioca" autocomplete="off" aria-label="Buscar alimento para trocar">
+<div class="calc" id="calc">
+  <h3>Calculadora de troca</h3>
+  <p class="sub">Qualquer quantidade, qualquer alimento do mesmo grupo. A troca mantém as mesmas calorias, para a base calórica do seu cardápio não mudar. Digite em gramas, como está no cardápio.</p>
+  <label for="c-de">O que está no seu cardápio</label>
+  <select id="c-de" aria-label="Alimento do seu cardápio"></select>
+  <label for="c-qtd" id="c-qtd-l">Quantidade (em g)</label>
+  <input type="number" id="c-qtd" inputmode="decimal" min="0" step="any" placeholder="Ex: 100" aria-label="Quantidade em gramas do alimento do cardápio">
+  <label for="c-para">Quero trocar por</label>
+  <select id="c-para" aria-label="Alimento para trocar"></select>
+  <div class="res" id="c-res" aria-live="polite">Escolha o alimento, digite a quantidade e veja a troca.</div>
 </div>
-<div id="resultado"></div>
-
 <div class="nota" style="margin-top:22px">
 Troque dentro do mesmo grupo. Carboidrato por carboidrato, proteína por proteína, fruta por fruta.<br><br>
 Arredonde. Não precisa ser exato.<br><br>
@@ -417,93 +439,154 @@ Trinus CrossFit · Moov Bootcamp
 </div>
 
 <script>
-var trocas = [
- {g:"carb", n:"Batata cozida", q:"1 unidade média", p:"~150 g"},
- {g:"carb", n:"Batata-doce", q:"1 pedaço médio", p:"~130 g"},
- {g:"carb", n:"Mandioca", q:"1 pedaço médio", p:"~100 g", alt:"aipim macaxeira"},
- {g:"carb", n:"Inhame ou cará", q:"1 unidade pequena", p:"~130 g"},
- {g:"carb", n:"Macarrão de arroz ou milho", q:"1 pegador", p:"~100 g"},
- {g:"carb", n:"Feijão, lentilha ou grão-de-bico", q:"2 conchas médias", p:"~200 g"},
- {g:"carb", n:"Aveia em flocos", q:"4 colheres de sopa", p:"~40 g"},
- {g:"carb", n:"Goma de tapioca", q:"2 colheres de sopa", p:"~35 g"},
- {g:"carb", n:"Cuscuz de milho ou flocão", q:"1 xícara", p:"~150 g", alt:"fubá"},
- {g:"carb", n:"Polenta", q:"1 fatia grossa", p:"~180 g"},
- {g:"carb", n:"Pão sem glúten", q:"1 fatia", p:"~40 g"},
+var itens = [
+ {g:"carb", n:"Arroz cozido", k:128, u:[25, "colher de sopa cheia", "colheres de sopa cheias"]},
+ {g:"carb", n:"Feijão cozido", k:76, u:[100, "concha média", "conchas médias"]},
+ {g:"carb", n:"Batata-doce cozida", k:77, u:[150, "unidade média", "unidades médias"]},
+ {g:"carb", n:"Batata inglesa cozida ou assada", k:87, u:[200, "unidade grande", "unidades grandes"]},
+ {g:"carb", n:"Mandioca cozida", k:125, u:[50, "pedaço", "pedaços"], alt:"aipim macaxeira"},
+ {g:"carb", n:"Macarrão sem glúten cozido", k:110, alt:"macarrao arroz milho"},
+ {g:"carb", n:"Cuscuz de milho cozido", k:113, u:[20, "colher de sopa", "colheres de sopa"], alt:"fubá flocão"},
+ {g:"carb", n:"Tapioca (goma)", k:300, u:[15, "colher de sopa rasa de goma", "colheres de sopa rasas de goma"]},
+ {g:"carb", n:"Aveia em flocos", k:394, u:[10, "colher de sopa", "colheres de sopa"]},
+ {g:"carb", n:"Pão sem glúten", k:300, u:[25, "fatia", "fatias"], m:"varia por marca"},
+ {g:"carb", n:"Granola doce Granô", k:460, u:[10, "colher de sopa", "colheres de sopa"]},
+ {g:"carb", n:"Granola salgada Granô", k:490, u:[10, "colher de sopa", "colheres de sopa"]},
+ {g:"carb", n:"Inhame ou cará", k:97},
+ {g:"carb", n:"Lentilha", k:93},
+ {g:"carb", n:"Grão-de-bico", k:164},
+ {g:"carb", n:"Polenta", k:70},
 
- {g:"fruta", n:"Maçã ou pera", q:"1 unidade média", p:"~130 g"},
- {g:"fruta", n:"Mamão", q:"1 fatia média", p:"~150 g"},
- {g:"fruta", n:"Laranja ou tangerina", q:"1 unidade média", p:"~150 g", alt:"mexerica bergamota"},
- {g:"fruta", n:"Morango", q:"10 unidades", p:"~200 g"},
- {g:"fruta", n:"Abacaxi ou melão", q:"2 fatias finas", p:"~150 g"},
- {g:"fruta", n:"Uva", q:"12 unidades", p:"~100 g"},
- {g:"fruta", n:"Kiwi", q:"2 unidades", p:"~130 g"},
- {g:"fruta", n:"Manga", q:"meia unidade", p:"~120 g"},
+ {g:"fruta", n:"Banana", k:98, u:[100, "unidade média", "unidades médias"]},
+ {g:"fruta", n:"Maçã ou pera", k:55, u:[130, "unidade média", "unidades médias"]},
+ {g:"fruta", n:"Mamão", k:40},
+ {g:"fruta", n:"Melão", k:29},
+ {g:"fruta", n:"Morango", k:30, u:[150, "xícara", "xícaras"], alt:"morangos"},
+ {g:"fruta", n:"Laranja ou tangerina", k:37, alt:"mexerica bergamota"},
+ {g:"fruta", n:"Abacaxi", k:48},
+ {g:"fruta", n:"Uva", k:53},
+ {g:"fruta", n:"Kiwi", k:51},
+ {g:"fruta", n:"Manga", k:72},
+ {g:"fruta", n:"Melancia", k:33},
+ {g:"fruta", n:"Goiaba", k:54},
+ {g:"fruta", n:"Mirtilo", k:57},
+ {g:"fruta", n:"Framboesa", k:52},
+ {g:"fruta", n:"Amora", k:43},
+ {g:"fruta", n:"Pêssego", k:39},
+ {g:"fruta", n:"Ameixa fresca", k:46},
+ {g:"fruta", n:"Cereja", k:63},
+ {g:"fruta", n:"Caqui", k:71},
+ {g:"fruta", n:"Pitaya", k:50},
 
- {g:"prot", n:"Patinho, alcatra ou coxão mole", q:"1 bife pequeno", p:"~90 g", alt:"carne bovina"},
- {g:"prot", n:"Carne moída magra", q:"4 colheres de sopa", p:"~90 g"},
- {g:"prot", n:"Lombo ou filé suíno", q:"1 bife pequeno", p:"~90 g", alt:"porco"},
- {g:"prot", n:"Tilápia, merluza ou pescada", q:"1 filé médio", p:"~115 g", alt:"peixe"},
- {g:"prot", n:"Salmão", q:"1 posta pequena", p:"~105 g", m:"já traz gordura: tire o azeite da refeição"},
- {g:"prot", n:"Atum em água", q:"1 lata escorrida", p:"~100 g"},
- {g:"prot", n:"Ovo inteiro", q:"4 unidades", p:"", m:"já traz gordura: tire o azeite da refeição"},
- {g:"prot", n:"Clara de ovo", q:"6 unidades", p:""},
- {g:"prot", n:"Queijo cottage", q:"8 colheres de sopa", p:"~210 g"},
- {g:"prot", n:"Iogurte grego sem açúcar", q:"1 pote e 1/4", p:"~250 g"},
- {g:"prot", n:"Whey protein", q:"1 scoop", p:"~30 g"},
- {g:"prot", n:"Tofu firme", q:"1 bloco pequeno", p:"~190 g"},
+ {g:"prot", n:"Peito de frango grelhado", k:159, alt:"frango"},
+ {g:"prot", n:"Frango desfiado", k:163, u:[20, "colher de sopa", "colheres de sopa"]},
+ {g:"prot", n:"Patinho bovino grelhado ou moído", k:219, alt:"carne bovina"},
+ {g:"prot", n:"Filé de peixe grelhado", k:128, alt:"tilapia merluza pescada"},
+ {g:"prot", n:"Ovos inteiros", k:146, u:[50, "unidade média", "unidades médias"], alt:"ovo omelete"},
+ {g:"prot", n:"Queijo cottage", k:98, u:[20, "colher de sopa", "colheres de sopa"]},
+ {g:"prot", n:"Iogurte natural sem açúcar", k:51, u:[170, "pote", "potes"], m:"varia por marca"},
+ {g:"prot", n:"Whey protein sem açúcar adicionado", k:400, u:[30, "medida", "medidas"], m:"varia por marca"},
+ {g:"prot", n:"Alcatra ou coxão mole", k:230, alt:"carne bovina"},
+ {g:"prot", n:"Carne moída magra", k:212},
+ {g:"prot", n:"Lombo ou filé suíno", k:210, alt:"porco"},
+ {g:"prot", n:"Salmão", k:229},
+ {g:"prot", n:"Atum em água", k:116},
+ {g:"prot", n:"Clara de ovo", k:59, u:[33, "unidade", "unidades"]},
+ {g:"prot", n:"Iogurte grego sem açúcar", k:97, m:"varia por marca"},
+ {g:"prot", n:"Tofu firme", k:120, m:"varia por marca"},
 
- {g:"gord", n:"Óleo de coco", q:"1 colher de sopa", p:"~10 g"},
- {g:"gord", n:"Manteiga ou ghee", q:"1 colher de sopa rasa", p:"~12 g"},
- {g:"gord", n:"Abacate", q:"3 colheres de sopa", p:"~55 g"},
- {g:"gord", n:"Castanha-do-pará", q:"3 unidades", p:"~15 g", alt:"castanha do para"},
- {g:"gord", n:"Castanha de caju", q:"10 unidades", p:"~15 g"},
- {g:"gord", n:"Amêndoas", q:"12 unidades", p:"~15 g", alt:"amendoa"},
- {g:"gord", n:"Nozes", q:"4 unidades", p:"~15 g"},
- {g:"gord", n:"Amendoim", q:"1 punhado pequeno", p:"~15 g"},
- {g:"gord", n:"Pasta de amendoim", q:"1 colher de sopa", p:"~18 g"},
- {g:"gord", n:"Chia ou linhaça", q:"2 colheres de sopa", p:"~18 g"},
- {g:"gord", n:"Coco ralado sem açúcar", q:"3 colheres de sopa", p:"~18 g"},
- {g:"gord", n:"Queijo branco ou minas", q:"1 fatia grossa", p:"~40 g"},
- {g:"gord", n:"Azeitona", q:"12 unidades", p:"~45 g"}
+ {g:"gord", n:"Azeite de oliva", k:884, u:[5, "colher de chá", "colheres de chá"]},
+ {g:"gord", n:"Pasta de amendoim sem açúcar", k:588, u:[15, "colher de sopa rasa", "colheres de sopa rasas"]},
+ {g:"gord", n:"Queijo muçarela", k:330, u:[25, "fatia média", "fatias médias"]},
+ {g:"gord", n:"Queijo minas frescal", k:264, u:[30, "fatia média", "fatias médias"], alt:"queijo branco"},
+ {g:"gord", n:"Óleo de coco", k:884},
+ {g:"gord", n:"Manteiga", k:726},
+ {g:"gord", n:"Ghee", k:876},
+ {g:"gord", n:"Abacate", k:96},
+ {g:"gord", n:"Castanha-do-pará", k:643, alt:"castanha do para"},
+ {g:"gord", n:"Castanha de caju", k:570},
+ {g:"gord", n:"Amêndoas", k:579, alt:"amendoa"},
+ {g:"gord", n:"Nozes", k:654},
+ {g:"gord", n:"Amendoim", k:606},
+ {g:"gord", n:"Chia", k:486},
+ {g:"gord", n:"Linhaça", k:534},
+ {g:"gord", n:"Coco ralado sem açúcar", k:660},
+ {g:"gord", n:"Azeitona", k:145}
 ];
-var grupos = {
- carb:"Para cada 100 g de arroz cozido do seu cardápio",
- fruta:"Para cada 1 banana média do seu cardápio",
- prot:"Para cada 100 g de frango grelhado do seu cardápio",
- gord:"Para cada 1 colher de sopa de azeite do seu cardápio"
-};
 var ordem = ["carb","fruta","prot","gord"];
+var nomesGrupo = {carb:"Carboidratos", fruta:"Frutas", prot:"Proteínas", gord:"Gorduras"};
 
-function limpa(x){
-  return x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+// calculadora de troca: mesmas calorias (kcal) entre dois alimentos do mesmo grupo
+var elDe = document.getElementById("c-de");
+var elPara = document.getElementById("c-para");
+var elQtd = document.getElementById("c-qtd");
+var elRes = document.getElementById("c-res");
+
+function opcoes(sel, grupo, excluir){
+  var h = "";
+  ordem.forEach(function(g){
+    if(grupo && g !== grupo) return;
+    h += '<optgroup label="' + nomesGrupo[g] + '">';
+    itens.forEach(function(it, idx){
+      if(it.g !== g || idx === excluir) return;
+      h += '<option value="' + idx + '">' + it.n + '</option>';
+    });
+    h += '</optgroup>';
+  });
+  sel.innerHTML = h;
 }
-function desenha(termo){
-  var alvo = document.getElementById("resultado");
-  var t = limpa(termo.trim());
-  var lista = t ? trocas.filter(function(i){
-    return limpa(i.n).indexOf(t) > -1 || (i.alt && limpa(i.alt).indexOf(t) > -1);
-  }) : trocas;
-  if(!lista.length){
-    alvo.innerHTML = '<p class="vazio">Não encontramos esse alimento. Pergunte no grupo — a Gabi responde lá.</p>';
+function fmt(v){ return String(v).replace(".", ","); }
+function nomeFrase(i){ return i.n.charAt(0).toLowerCase() + i.n.slice(1); }
+function arredondaG(v){
+  if(v < 20) return Math.round(v);
+  if(v < 300) return Math.round(v/5)*5;
+  return Math.round(v/10)*10;
+}
+function mostraG(v){
+  return v >= 1000 ? fmt(Math.round(v/100)/10) + " kg" : fmt(v) + " g";
+}
+function medida(it, g){
+  if(!it.u) return "";
+  var n = g / it.u[0];
+  if(n < 0.4) return "";
+  n = n >= 5 ? Math.round(n) : Math.round(n*2)/2;
+  return fmt(n) + " " + (n === 1 ? it.u[1] : it.u[2]);
+}
+function atualizaPara(){
+  var de = +elDe.value;
+  var antes = elPara.value;
+  opcoes(elPara, itens[de].g, de);
+  if(antes && elPara.querySelector('option[value="'+antes+'"]')) elPara.value = antes;
+  calcula();
+}
+function calcula(){
+  var a = itens[+elDe.value];
+  var b = itens[+elPara.value];
+  var qtd = parseFloat(String(elQtd.value).replace(",", "."));
+  if(!b) return;
+  if(!(qtd > 0)){
+    elRes.innerHTML = "Digite a quantidade, em gramas, que está no seu cardápio.";
     return;
   }
-  var html = "";
-  ordem.forEach(function(g){
-    var itens = lista.filter(function(i){ return i.g === g; });
-    if(!itens.length) return;
-    html += '<div class="grupo"><div class="ancora">' + grupos[g] + '</div>';
-    itens.forEach(function(i){
-      html += '<div class="troca"><span><b>' + i.n + '</b>' +
-              (i.m ? '<span class="marca">' + i.m + '</span>' : '') +
-              '</span><em>' + i.q + (i.p ? ' · ' + i.p : '') + '</em></div>';
-    });
-    html += '</div>';
-  });
-  alvo.innerHTML = html;
+  var kcal = qtd * a.k / 100;
+  if(kcal < 20 || kcal > 700){
+    elRes.innerHTML = '<span class="aviso">Confira a quantidade.</span>' +
+      '<small>Digite em <b>gramas</b>, como está no seu cardápio, entre parênteses. Exemplo: 100 g de arroz cozido.</small>';
+    return;
+  }
+  var g = arredondaG(kcal / b.k * 100);
+  var med = medida(b, g);
+  var h = '<small style="margin:0">Troque por</small><span class="big"><mark>' + mostraG(g) + '</mark> de ' + nomeFrase(b) + '</span>';
+  if(med) h += '<small>Em medida caseira: cerca de ' + med + '.</small>';
+  if(b.m) h += '<small class="aviso">Atenção: ' + nomeFrase(b) + ' ' + b.m + '. Confira o rótulo.</small>';
+  h += '<small>Mesmas calorias, então a base calórica do seu cardápio não muda. Arredonde, não precisa ser exato.</small>';
+  elRes.innerHTML = h;
 }
-var campo = document.getElementById("q");
-campo.addEventListener("input", function(){ desenha(campo.value); });
-desenha("");
+opcoes(elDe, null, -1);
+atualizaPara();
+elDe.addEventListener("change", atualizaPara);
+elPara.addEventListener("change", calcula);
+elQtd.addEventListener("input", calcula);
 
 var dados = {
   1:{r:"Esta semana", v:"Adaptação", t:"Siga o cardápio, aprenda as porções, monte o prato certo. É a semana em que você aprende o método."},
