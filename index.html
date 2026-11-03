@@ -200,7 +200,6 @@ footer{margin-top:50px;padding:20px 0 40px;border-top:4px solid var(--ink);
   <li>Sem farinha de trigo, sem açúcar e sem álcool — exceto nas refeições livres da semana.</li>
   <li>Salada, legumes e verduras são à vontade.</li>
   <li>Treine o quanto sua rotina permitir. Faça o check-in, sempre.</li>
-  <li>Responda a enquete de check-in toda semana.</li>
   <li>Errou? Volta na próxima refeição.</li>
 </ul>
 
@@ -494,6 +493,7 @@ var itens = [
  {g:"prot", n:"Clara de ovo", k:59, u:[33, "unidade", "unidades"]},
  {g:"prot", n:"Iogurte grego sem açúcar", k:97, m:"varia por marca"},
  {g:"prot", n:"Tofu firme", k:120, m:"varia por marca"},
+ {g:"prot", n:"PTS seca (antes de hidratar)", k:330, u:[10, "colher de sopa", "colheres de sopa"], m:"varia por marca"},
 
  {g:"gord", n:"Azeite de oliva", k:884, u:[5, "colher de chá", "colheres de chá"]},
  {g:"gord", n:"Pasta de amendoim sem açúcar", k:588, u:[15, "colher de sopa rasa", "colheres de sopa rasas"]},
@@ -536,7 +536,7 @@ function opcoes(sel, grupo, excluir){
   sel.innerHTML = h;
 }
 function fmt(v){ return String(v).replace(".", ","); }
-function nomeFrase(i){ return i.n.charAt(0).toLowerCase() + i.n.slice(1); }
+function nomeFrase(i){ return /^[A-Z]{2}/.test(i.n) ? i.n : i.n.charAt(0).toLowerCase() + i.n.slice(1); }
 function arredondaG(v){
   if(v < 20) return Math.round(v);
   if(v < 300) return Math.round(v/5)*5;
